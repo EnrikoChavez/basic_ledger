@@ -1,3 +1,3 @@
 
 npm dependencies:
-npm install --save-dev @openzeppelin/hardhat-upgrades
+npm install --save-dev @openzeppelin/contracts
