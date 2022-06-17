@@ -24,5 +24,13 @@ task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
 module.exports = {
   solidity: "0.8.4",
   networks: {
+    hardhat: {
+      forking: {
+        // eslint-disable-next-line
+        enabled: true,
+        //exposing key since private repo for testing, this forks from mainnet eth
+        url: `https://eth-mainnet.alchemyapi.io/v2/5yg43Bhpb4konxq7nKuOGmaEgz0z4gFx`
+      }
+    }
   }
 };
