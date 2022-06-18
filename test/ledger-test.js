@@ -65,15 +65,16 @@ describe("Ledger", function () {
         usdcContract = await hre.ethers.getContractAt(IERC20_SOURCE, USDC_ADDRESS, whale_signer);
         usdcContract = await usdcContract.connect(whale_signer);
 
-        assert(await usdcContract.balanceOf(USDC_WHALE) > 1_000_000_000); //arbitrary amount (1000 usdc)
+        assert(await usdcContract.balanceOf(USDC_WHALE) > 1_000_000_000_000); //arbitrary amount (1,000,000 usdc)
         assert(await ethers.provider.getBalance(USDC_WHALE) > 1_000_000_000_000_000_000); //arbitrary amount (1 ether)
     });
 
     it("Should send USDC from whale wallet to ledger to fund ledger with USDC", async function () {
 
-        const usdcInDollars = '1000';
+        //funding 1 million usdc, this may be a limit as each nft is worth 1 usdc
+        const usdcInDollars = '1000000';
         const usdcCentsRemainder = '00';
-        await usdcContract.transfer(ledger.address, usdcInDollars + usdcCentsRemainder + "000000");
+        await usdcContract.transfer(ledger.address, usdcInDollars + usdcCentsRemainder + "0000");
 
         await hre.network.provider.request({
             method: "hardhat_stopImpersonatingAccount",
@@ -87,7 +88,14 @@ describe("Ledger", function () {
 
   describe("Ledger functionality", function () {
 
-    it("Should be able to allow 1 user to borrow USDC by sending an NFT as collateral ", async function () {
+    xit("The user can borrow USDC by sending NFT as collateral", async function () {
+        
+        await ledger.borrowUSDC()
+
+
+    });
+
+    xit("Should be able to allow 1 user to borrow USDC by sending an NFT as collateral ", async function () {
 
         await nft['safeTransferFrom(address,address,uint256)'](account1.address, ledger.address, account1nftId);
         expect(await nft.balanceOf(ledger.address)).to.equal(1);
