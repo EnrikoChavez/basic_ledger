@@ -26,12 +26,6 @@ describe("Ledger", function () {
   //ledger tests for one user
   describe("Setup for ledger functionality", function () {
 
-    it("Should deploy ledger contract", async function () {
-        Ledger = await ethers.getContractFactory("Ledger");
-        ledger = await Ledger.deploy();
-        await ledger.deployed();
-    });
-
     //TODO: look into expanding to 3 users
     it("Should have a user own an NFT", async function () {
         accounts = await hre.ethers.getSigners();
@@ -48,6 +42,16 @@ describe("Ledger", function () {
         expect(await nft.balanceOf(account1.address)).to.equal(1);
         expect(await nft.ownerOf(1)).to.equal(account1.address);
 
+    });
+
+    it("Should deploy ledger contract, and set approvals to smart contract", async function () {
+        Ledger = await ethers.getContractFactory("Ledger");
+        ledger = await Ledger.deploy(nft.address);
+        await ledger.deployed();
+
+        // does not seem necessary yet as all gas fees will be from sender
+        // await nft.setApprovalForAll(ledger.address, true); //this way smart contract can transfer nfts as well
+        // assert((await nft.isApprovedForAll(account1.address, ledger.address)) == true);
     });
 
     it("Should read amount of USDC from whale wallet, ensure wallet has eth too for gas fees", async function () {
@@ -87,6 +91,18 @@ describe("Ledger", function () {
 
         await nft['safeTransferFrom(address,address,uint256)'](account1.address, ledger.address, account1nftId);
         expect(await nft.balanceOf(ledger.address)).to.equal(1);
+        // await hre.network.provider.request({
+        //     method: "hardhat_impersonateAccount",
+        //     params: [ledger.address],
+        // });
+
+        // ledger_signer = await ethers.provider.getSigner(ledger.address);
+        
+        // nft = await nft.connect(ledger_signer);
+        // console.log(ledger.address)
+        await ledger.sendNFT(ledger.address, account1.address, account1nftId);
+        expect(await nft.balanceOf(ledger.address)).to.equal(0);
+        
 
     });
 
