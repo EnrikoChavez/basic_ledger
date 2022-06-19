@@ -16,7 +16,7 @@ function usdcToUnits(usdc){
 }
 
 function unitsToUsdc(usdc){
-    return usdc / 1000000
+    return Math.round(usdc / 1000000)
 }
 
 let Ledger;
@@ -32,7 +32,7 @@ describe("Ledger", function () {
 
   describe("Setup for ledger functionality", function () {
 
-    it("Have users own NFTs", async function () {
+    it("Have account[0] and account[1] own NFTs", async function () {
         //get account addresses
         account = await hre.ethers.getSigners();
 
@@ -56,13 +56,13 @@ describe("Ledger", function () {
 
     });
 
-    it("Deploy ledger contract, and set approvals to smart contract", async function () {
+    it("Deploy ledger contract and set approvals for smart contract to send NFTs for default account[0]", async function () {
         //get ledger contract instance
         Ledger = await ethers.getContractFactory("Ledger");
         ledger = await Ledger.deploy(nft.address);
         await ledger.deployed();
 
-        //approve for smart contract to transfer nfts on behalf of caller
+        //approve for smart contract to transfer nfts on behalf of account[0]
         await nft.setApprovalForAll(ledger.address, true);
         assert((await nft.isApprovedForAll(account[0].address, ledger.address)) == true);
     });
@@ -82,7 +82,7 @@ describe("Ledger", function () {
         assert(await ethers.provider.getBalance(USDC_WHALE) > 1_000_000_000_000_000_000); //arbitrary amount (1 ether)
     });
 
-    it("Send usdc to addresses to pay back debt and send USDC from whale wallet to ledger to fund ledger with USDC", async function () {
+    it("Send usdc to addresses to pay back debt and send USDC to ledger so it can lend USDC", async function () {
 
         let usdcInDollars = '1000000';
         //sending 1 million usdc to addresses 0 and 1
@@ -98,21 +98,20 @@ describe("Ledger", function () {
             method: "hardhat_stopImpersonatingAccount",
             params: [USDC_WHALE],
         });
-        const account0_signer = ethers.provider.getSigner(account[0].address)
-        usdcContract = await usdcContract.connect(account0_signer)
+        usdcContract = await usdcContract.connect(account[0])
     });
   });
 
-  describe("Ledger functionality", function () {
+  describe("Ledger functionality - Basic interactions", function () {
 
-    it("account[0] borrows USDC by sending NFT as collateral", async function () {
+    it("account[0] borrows USDC by sending an NFT as collateral", async function () {
         
         //checking before balances
         assert(await usdcContract.balanceOf(account[0].address) == 1_000_000_000_000);
         assert(await nft.balanceOf(ledger.address) == 0);
         assert(await nft.balanceOf(account[0].address) == 2);
 
-        const amountToBorrow = 1; //up to 70 usdc can be borrowed since nft is 100 usdc
+        const amountToBorrow = 1;
         await ledger.borrowUSDC(tokenId[0], usdcToUnits(amountToBorrow));
 
         //checking after balances
@@ -122,7 +121,7 @@ describe("Ledger", function () {
 
     });
 
-    it("The user can payback with USDC to retrieve NFT", async function () {
+    it("account[0] pays back with USDC to retrieve NFT", async function () {
 
         const slippage = 3; //amount owed increases every second during the grace period, offer some slippage
         const amountAvailableToPay = unitsToUsdc(await ledger.amountOwed(tokenId[0])) + slippage;
@@ -142,11 +141,11 @@ describe("Ledger", function () {
         //make sure balances are what they are supposed to be
         assert(await nft.balanceOf(ledger.address) == 0);
         assert(await nft.balanceOf(account[0].address) == 2);
-        assert(await usdcContract.balanceOf(account[0].address) == account0BalanceBeforePay - amountPaid);
+        assert(await usdcContract.balanceOf(account[0].address) == account0BalanceBeforePay - amountPaid); //balance does not depend on slippage (amountAvailableToPay)
 
     });
 
-    it("Fail to buy an NFT from another user, until waiting longer", async function () {
+    it("account[1] fails to buy an NFT from account[0], until waiting longer", async function () {
         
         //start a borrow from account[0]
         const amountToBorrow = 1; 
@@ -159,9 +158,8 @@ describe("Ledger", function () {
             method: "hardhat_impersonateAccount",
             params: [account[1].address],
         });
-        const account1_signer = ethers.provider.getSigner(account[1].address);
-        ledger = await ledger.connect(account1_signer);
-        usdcContract = await usdcContract.connect(account1_signer);
+        ledger = await ledger.connect(account[1]);
+        usdcContract = await usdcContract.connect(account[1]);
         await usdcContract.approve(ledger.address, Number.MAX_SAFE_INTEGER - 1);
 
         //account[1] tries to buy nft, but shouldnt because owner still has time to pay
@@ -171,7 +169,6 @@ describe("Ledger", function () {
         assert(await nft.balanceOf(account[1].address) == 1);
         try{
             await ledger.payForNFT(tokenId[0], usdcToUnits(amountAvailableToPay))
-            assert(false)
         }
         catch(err){
         }
@@ -191,39 +188,151 @@ describe("Ledger", function () {
             method: "hardhat_stopImpersonatingAccount",
             params: [account[1].address],
         });
-        const account0_signer = ethers.provider.getSigner(account[0].address);
-        ledger = await ledger.connect(account0_signer);
-        usdcContract = await usdcContract.connect(account0_signer);
-
-    });
-
-    xit("", async function () {
-
-    });
-
-    xit("", async function () {
+        ledger = await ledger.connect(account[0]);
+        usdcContract = await usdcContract.connect(account[0]);
 
     });
 
   });
 
-  describe("Ledger functionality - multiple users", function () {
+  describe("Ledger functionality - Advanced interactions", function () {
+
+    it("account[1] collateralizes 2 different nfts at different times", async function () {
+
+        //impersonate account[1]
+        await hre.network.provider.request({
+            method: "hardhat_impersonateAccount",
+            params: [account[1].address],
+        });
+        ledger = await ledger.connect(account[1]);
+        nft = await nft.connect(account[1])
+
+        //approve for smart contract to transfer nfts on behalf of account[0]
+        await nft.setApprovalForAll(ledger.address, true);
+
+        //checking before balances
+        assert(await nft.balanceOf(ledger.address) == 0);
+        assert(await nft.balanceOf(account[1].address) == 2);
+
+        //collateralize 2 different nfts at 2 different times
+        const amountToBorrow = 1; 
+        await ledger.borrowUSDC(tokenId[0], usdcToUnits(amountToBorrow));
+        await new Promise(resolve => setTimeout(resolve, 4000)); 
+        await ledger.borrowUSDC(tokenId[2], usdcToUnits(amountToBorrow));
+
+        //checking after balances
+        assert(await nft.balanceOf(ledger.address) == 2);
+        assert(await nft.balanceOf(account[1].address) == 0);
+
+        //go back to default account[0] signer
+        await hre.network.provider.request({
+            method: "hardhat_stopImpersonatingAccount",
+            params: [account[1].address],
+        });
+        ledger = await ledger.connect(account[0]);
+        nft = await nft.connect(account[0])
+    });
+
+    it("account[0] buys one nft but cannot buy the other nft from account[1] because of 1 of the nft's grace periods", async function () {
+        //checking before balance
+        assert(await nft.balanceOf(account[0].address) == 1);
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        const slippage = 10;
+        const amountAvailableToPayToken0 = unitsToUsdc(await ledger.amountOwed(tokenId[0])) + slippage;
+        const amountAvailableToPayToken2 = unitsToUsdc(await ledger.amountOwed(tokenId[2])) + slippage;
+
+        //can buy tokenId[0] since grace period has ellapsed
+        await ledger.payForNFT(tokenId[0], usdcToUnits(amountAvailableToPayToken0));
+
+        //cannot buy tokenId[2] since grace period has not ellapsed
+        try{
+            await ledger.payForNFT(tokenId[2], usdcToUnits(amountAvailableToPayToken2));
+        }
+        catch(err){
+        }
+
+        //account[0] should only have 1 more nft
+        assert(await nft.balanceOf(account[0].address) == 2);
+
+    });
+
+    it("account[1] tries to buy both nfts back but can only buy 1 since account[0] bought back one of their nfts", async function () {
+
+        //impersonate account[1]
+        await hre.network.provider.request({
+            method: "hardhat_impersonateAccount",
+            params: [account[1].address],
+        });
+        ledger = await ledger.connect(account[1]);
+
+        const slippage = 10;
+        const amountAvailableToPayToken0 = unitsToUsdc(await ledger.amountOwed(tokenId[0])) + slippage;
+        const amountAvailableToPayToken2 = unitsToUsdc(await ledger.amountOwed(tokenId[2])) + slippage;
+
+        //cannot buy tokenId[0] because account[0] already bought it
+        try{
+            await ledger.payForNFT(tokenId[0], usdcToUnits(amountAvailableToPayToken2));
+        }
+        catch(err){
+        }
+
+        //can buy tokenId[2] because account[0] could not have bought it
+        await ledger.payForNFT(tokenId[2], usdcToUnits(amountAvailableToPayToken0));
+        
+        //account[1] should have 1 nft, since they collateralized 2 when they had 2 NFTs
+        assert(await nft.balanceOf(account[1].address) == 1);
+
+        //go back to default account[0] signer
+        await hre.network.provider.request({
+            method: "hardhat_stopImpersonatingAccount",
+            params: [account[1].address],
+        });
+        ledger = await ledger.connect(account[0]);
+    });
 
   });
 
-  describe("Test Wrong Interactions", function () {
-    //only allow 1 loan at a time per user
-    //prevent re-entrency attacks by updating the state before any actual transfers
-    //user can only pay once and contract has to receive enough funds before letting nft go
+  describe("Ledger functionality - Requirements", function () {
+    it("account[0] cannot borrow more than 70% of nft's price", async function () {
+        //checking before balances
+        assert(await nft.balanceOf(ledger.address) == 0);
+        assert(await nft.balanceOf(account[0].address) == 2);
 
-    //user has to send NFT to get
+        //try to borrow large amount then lower ask
+        let amountToBorrow = 71; //up to 70 usdc can be borrowed since nft is 100 usdc
+        try{
+            await ledger.borrowUSDC(tokenId[0], usdcToUnits(amountToBorrow));
+        }
+        catch(err){
+        }
+        amountToBorrow = 70;
+        await ledger.borrowUSDC(tokenId[0], usdcToUnits(amountToBorrow));
+
+        //checking after balances
+        assert(await nft.balanceOf(ledger.address) == 1);
+        assert(await nft.balanceOf(account[0].address) == 1);
+    });
+
+    it("interest of account[0]'s token increases over time", async function () {
+        const amountOwed1 = await ledger.amountOwed(tokenId[0])
+
+        //wait for interest to increase
+        await new Promise(resolve => setTimeout(resolve, 5000)); 
+
+        //dummy transaction to update block.timestamp
+        await ledger.borrowUSDC(tokenId[1], usdcToUnits(1));
+
+        const amountOwed2 = await ledger.amountOwed(tokenId[0])
+        
+        assert(amountOwed2.toNumber() > amountOwed1.toNumber());
+
+    });
 
   });
-
-  //Scaling ideas:
-  // - allow multiple users to loan
-  // - allow a user to collateralize multiple nfts, this would just require keeping track of each loan per user, when each loan happened
-
-  
 
 });
+
+// xit("", async function () {
+
+// });

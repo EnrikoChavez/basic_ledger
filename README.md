@@ -15,4 +15,8 @@ Steps to test:
 - run "npm install --save-dev @openzeppelin/hardhat-upgrades"
 - run "npx hardhat test"
 
+  //Scaling ideas:
+  // - allow multiple users to loan
+  // - allow a user to collateralize multiple nfts, this would just require keeping track of each loan per user, when each loan happened
+
 

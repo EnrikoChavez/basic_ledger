@@ -61,7 +61,7 @@ contract Ledger is Ownable, IERC721Receiver {
         require(nft.ownerOf(tokenId) == address(this), "token is not owned by contract");
         require(tokenIdToNFT[tokenId].tokenId > 0, "token is not owned by ledger");  //extra guard, should not get here
 
-        if ((block.timestamp - tokenIdToNFT[tokenId].timestamp - 1) <= timeToRepayLoanInSeconds){
+        if ((block.timestamp) <= (timeToRepayLoanInSeconds + tokenIdToNFT[tokenId].timestamp)){ //(to not underflow formula)
             require(msg.sender == tokenIdToNFT[tokenId].owner, "only owner of nft can get nft back before grace period");
             _payForNFT(tokenId);
         }
@@ -94,11 +94,10 @@ contract Ledger is Ownable, IERC721Receiver {
     }
 
     function interest(uint256 tokenId) private view returns (uint256) {
-        //interest tops off after grace period is over, leaving ledger with possible 5% profit if 70% of nft's value was borrowed
-        if ((block.timestamp - tokenIdToNFT[tokenId].timestamp - 1) <= timeToRepayLoanInSeconds){
-            tokenIdToNFT[tokenId].amountBorrowed * (block.timestamp - tokenIdToNFT[tokenId].timestamp) / (2 * timeToRepayLoanInSeconds);
+        if (block.timestamp >= timeToRepayLoanInSeconds + tokenIdToNFT[tokenId].timestamp){
+            return tokenIdToNFT[tokenId].amountBorrowed / 2;
         }
-        return tokenIdToNFT[tokenId].amountBorrowed / 2;
+        return tokenIdToNFT[tokenId].amountBorrowed * (block.timestamp - tokenIdToNFT[tokenId].timestamp) / (2 * timeToRepayLoanInSeconds);
     }
 
     function onERC721Received(
