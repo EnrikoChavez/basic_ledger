@@ -20,9 +20,9 @@ let ledger;
 let NFT;
 let nft;
 let usdcContract;
-let whale_signer;
 let accounts;
 let account1;
+let account2;
 let tokenId1;
 
 describe("Ledger", function () {
@@ -30,10 +30,11 @@ describe("Ledger", function () {
   //ledger tests for one user
   describe("Setup for ledger functionality", function () {
 
-    //TODO: look into expanding to 3 users
+    //TODO: look into expanding to 2 users
     it("Should have a user own an NFT", async function () {
         accounts = await hre.ethers.getSigners();
         account1 = accounts[0];
+        account2 = accounts[1]
 
         NFT = await ethers.getContractFactory("NFT");
         nft = await NFT.deploy();
@@ -63,7 +64,7 @@ describe("Ledger", function () {
             params: [USDC_WHALE],
         });
 
-        whale_signer = ethers.provider.getSigner(USDC_WHALE);
+        const whale_signer = ethers.provider.getSigner(USDC_WHALE);
         
         usdcContract = await hre.ethers.getContractAt(IERC20_SOURCE, USDC_ADDRESS, whale_signer);
         usdcContract = await usdcContract.connect(whale_signer);
@@ -72,12 +73,12 @@ describe("Ledger", function () {
         assert(await ethers.provider.getBalance(USDC_WHALE) > 1_000_000_000_000_000_000); //arbitrary amount (1 ether)
     });
 
-    it("Should send USDC from whale wallet to ledger to fund ledger with USDC, also send usdc to address1 to pay back debt", async function () {
+    it("Should send USDC from whale wallet to ledger to fund ledger with USDC, also send usdc to addresses to pay back debt", async function () {
 
-        //funding 1 million usdc, this may be a limit as each nft is worth 1 usdc
         let usdcInDollars = '1000000';
         await usdcContract.transfer(ledger.address, usdcInDollars + "000000");
         await usdcContract.transfer(account1.address, usdcInDollars + "000000");
+        await usdcContract.transfer(account2.address, usdcInDollars + "000000");
 
         await hre.network.provider.request({
             method: "hardhat_stopImpersonatingAccount",
@@ -104,9 +105,6 @@ describe("Ledger", function () {
         assert(await usdcContract.balanceOf(account1.address) == (1_000_000_000_000 + usdcToUnits(amountToBorrow)));
         assert(await nft.balanceOf(ledger.address) == 1);
         assert(await nft.balanceOf(account1.address) == 0);
-        console.log(await usdcContract.balanceOf(account1.address))
-        console.log(await usdcContract.balanceOf(ledger.address))
-        console.log("")
 
     });
 
@@ -129,7 +127,55 @@ describe("Ledger", function () {
 
     });
 
+    it("Fail to buy an NFT from another user, until waiting longer", async function () {
+        
+        assert(await nft.balanceOf(ledger.address) == 0);
+        assert(await nft.balanceOf(account1.address) == 1);
+        const amountToBorrow = 1; 
+        await ledger.borrowUSDC(tokenId1, usdcToUnits(amountToBorrow));
+        assert(await nft.balanceOf(ledger.address) == 1);
+        assert(await nft.balanceOf(account1.address) == 0);
+
+        await hre.network.provider.request({
+            method: "hardhat_impersonateAccount",
+            params: [account2.address],
+        });
+        const account2_signer = ethers.provider.getSigner(account2.address);
+        ledger = await ledger.connect(account2_signer);
+        usdcContract = await usdcContract.connect(account2_signer);
+        await usdcContract.approve(ledger.address, Number.MAX_SAFE_INTEGER - 1);
+
+        const amountAvailableToPay = 2
+        assert(await nft.balanceOf(ledger.address) == 1);
+        assert(await nft.balanceOf(account2.address) == 0);
+        try{
+            await ledger.payForNFT(tokenId1, usdcToUnits(amountAvailableToPay))
+            assert(false)
+        }
+        catch(err){
+        }
+        assert(await nft.balanceOf(ledger.address) == 1);
+        assert(await nft.balanceOf(account2.address) == 0);
+
+        await new Promise(resolve => setTimeout(resolve, 10000));
+
+        await ledger.payForNFT(tokenId1, usdcToUnits(amountAvailableToPay));
+        assert(await nft.balanceOf(ledger.address) == 0);
+        assert(await nft.balanceOf(account2.address) == 1);
+
+        await hre.network.provider.request({
+            method: "hardhat_stopImpersonateAccount",
+            params: [account2.address],
+        });
+        const account1_signer = ethers.provider.getSigner(account1.address);
+        ledger = await ledger.connect(account1_signer);
+        usdcContract = await usdcContract.connect(account1_signer);
+
+
+    });
+
     xit("", async function () {
+
     });
 
   });

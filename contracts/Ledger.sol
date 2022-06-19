@@ -13,9 +13,9 @@ contract Ledger is Ownable, IERC721Receiver {
 
     NFT nft;
     uint256 nftPrice = usdcToUnits(100);
-    mapping(uint256 => collatNFT) private tokenIdToNFT;
+    mapping(uint256 => collatNFT) public tokenIdToNFT;
     address public usdcToken = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
-    uint256 public timeToRepayLoanInSeconds = 100;
+    uint256 public timeToRepayLoanInSeconds = 5;
 
     struct collatNFT {
         uint256 tokenId;
@@ -56,11 +56,10 @@ contract Ledger is Ownable, IERC721Receiver {
         require(amount >= amountOwed(tokenId), string.concat("payment is not enough, amount in usdc required is ", Strings.toString(unitsToUsdc(amountOwed(tokenId))), ". Add a buffer amount to amount required, we will only accept the amount explicitly required"));
         require(nft.ownerOf(tokenId) == address(this), "token is not owned by contract");
         require(tokenIdToNFT[tokenId].tokenId > 0, "token is not owned by ledger");  //extra guard, should not get here
-
         if ((block.timestamp - tokenIdToNFT[tokenId].timestamp) <= timeToRepayLoanInSeconds){
             require(msg.sender == tokenIdToNFT[tokenId].owner, "only owner of nft can get nft back before grace period");
             _payForNFT(tokenId, amount);
-            
+
         }
         else {
             _payForNFT(tokenId, amount);
@@ -68,7 +67,7 @@ contract Ledger is Ownable, IERC721Receiver {
 
     }
 
-    function _payForNFT (uint256 tokenId, uint256 amount) private {
+    function _payForNFT(uint256 tokenId, uint256 amount) private {
         //pay USDC
         IERC20(usdcToken).transferFrom(msg.sender, address(this), amountOwed(tokenId));
 
