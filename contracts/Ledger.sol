@@ -29,6 +29,10 @@ contract Ledger is Ownable, IERC721Receiver {
         IERC20(usdcToken).approve(address(this), type(uint256).max);
     }
 
+    function amountOwed(uint256 tokenId) public view returns (uint256) {
+        return tokenIdToNFT[tokenId].amountBorrowed + interest(tokenId);
+    }
+
     function borrowUSDC(uint256 tokenId, uint256 amount) external {
 
         require(IERC20(usdcToken).balanceOf(address(this)) >= amount, "ledger does not have enough usdc, we have lent too much already! Come back later");
@@ -58,16 +62,16 @@ contract Ledger is Ownable, IERC721Receiver {
         require(tokenIdToNFT[tokenId].tokenId > 0, "token is not owned by ledger");  //extra guard, should not get here
         if ((block.timestamp - tokenIdToNFT[tokenId].timestamp) <= timeToRepayLoanInSeconds){
             require(msg.sender == tokenIdToNFT[tokenId].owner, "only owner of nft can get nft back before grace period");
-            _payForNFT(tokenId, amount);
+            _payForNFT(tokenId);
 
         }
         else {
-            _payForNFT(tokenId, amount);
+            _payForNFT(tokenId);
         }
 
     }
 
-    function _payForNFT(uint256 tokenId, uint256 amount) private {
+    function _payForNFT(uint256 tokenId) private {
         //pay USDC
         IERC20(usdcToken).transferFrom(msg.sender, address(this), amountOwed(tokenId));
 
@@ -77,12 +81,8 @@ contract Ledger is Ownable, IERC721Receiver {
             tokenId: 0,
             timestamp: block.timestamp,
             owner: msg.sender,
-            amountBorrowed: amount
+            amountBorrowed: amountOwed(tokenId)
         });
-    }
-
-    function amountOwed(uint256 tokenId) public view returns (uint256) {
-        return tokenIdToNFT[tokenId].amountBorrowed + interest(tokenId);
     }
 
     function usdcToUnits(uint256 usdc) private pure returns (uint256) {
@@ -94,7 +94,10 @@ contract Ledger is Ownable, IERC721Receiver {
     }
 
     function interest(uint256 tokenId) private view returns (uint256) {
-        return tokenIdToNFT[tokenId].amountBorrowed;
+        if (block.timestamp - tokenIdToNFT[tokenId].timestamp >= timeToRepayLoanInSeconds){
+            return tokenIdToNFT[tokenId].amountBorrowed / 2;
+        }
+        return tokenIdToNFT[tokenId].amountBorrowed * (block.timestamp - tokenIdToNFT[tokenId].timestamp) / (2 * timeToRepayLoanInSeconds);
     }
 
     function onERC721Received(
