@@ -21,10 +21,16 @@ Testing:
 Requirements to test:
 
 - node -v -> 16 (14 and 12 may work, not very sure)
-- npm -v -> 8.5.0 (other versions may work, but not very certain)
-- npx -v -> 8.5.0 (other versions may work, but not very certain)
+- download node version 16 here https://nodejs.org/en/download/
+
+- npm -v -> 8 (other versions may work, but not very certain)
+- npx -v -> 8 (other versions may work, but not very certain)
+
+- clone bundle
+
 - hardhat (run "npm install --save-dev hardhat")
-- openzeppelin (npm install --save-dev @openzeppelin/contracts)
+- (if not installed) openzeppelin (npm install --save-dev @openzeppelin/contracts)
+
 
 To test:
 - run "npx hardhat test"
