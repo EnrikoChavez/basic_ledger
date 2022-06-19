@@ -18,15 +18,13 @@ Testing:
 -   all the testing is done on ledger-test.js, where it mimicks interactions with the ledger contract on the of the hardhat local blockchain
 -   Much of the testing is commented, but can go over it in person/zoom and talk about how to add more test cases
 
-npm dependencies:
--   npm install --save-dev @openzeppelin/contracts
-
 Requirements to test:
 
 - node -v -> 16 (14 and 12 may work, not very sure)
 - npm -v -> 8.5.0 (other versions may work, but not very certain)
 - npx -v -> 8.5.0 (other versions may work, but not very certain)
 - hardhat (run "npm install --save-dev hardhat")
+- openzeppelin (npm install --save-dev @openzeppelin/contracts)
 
 To test:
 - run "npx hardhat test"
