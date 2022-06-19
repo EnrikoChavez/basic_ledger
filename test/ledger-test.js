@@ -53,7 +53,6 @@ describe("Ledger", function () {
         ledger = await Ledger.deploy(nft.address);
         await ledger.deployed();
 
-        // does not seem necessary yet as all gas fees will be from sender
         await nft.setApprovalForAll(ledger.address, true); //this way smart contract can transfer nfts as well
         assert((await nft.isApprovedForAll(account1.address, ledger.address)) == true);
     });
@@ -84,6 +83,8 @@ describe("Ledger", function () {
             method: "hardhat_stopImpersonatingAccount",
             params: [USDC_WHALE],
         });
+        account1_signer = ethers.provider.getSigner(account1.address)
+        usdcContract = await usdcContract.connect(account1_signer)
 
         assert(await usdcContract.balanceOf(ledger.address) == 1_000_000_000_000);
         
@@ -98,41 +99,29 @@ describe("Ledger", function () {
         assert(await usdcContract.balanceOf(account1.address) == 1_000_000_000_000);
         assert(await nft.balanceOf(ledger.address) == 0);
         assert(await nft.balanceOf(account1.address) == 1);
-        const amountToBorrow = 70; //up to 70
+        const amountToBorrow = 1; //up to 70
         await ledger.borrowUSDC(tokenId1, usdcToUnits(amountToBorrow));
         assert(await usdcContract.balanceOf(account1.address) == (1_000_000_000_000 + usdcToUnits(amountToBorrow)));
         assert(await nft.balanceOf(ledger.address) == 1);
         assert(await nft.balanceOf(account1.address) == 0);
+        console.log(await usdcContract.balanceOf(account1.address))
+        console.log(await usdcContract.balanceOf(ledger.address))
+        console.log("")
 
     });
 
     it("The user can payback with USDC to retrieve NFT", async function () {
 
-        const amountToPay = 70; //up to 70
-        await ledger.payForNFT(tokenId1, usdcToUnits(amountToPay));
-        assert(await usdcContract.balanceOf(account1.address) < 1_000_000_000_000 );
-        assert(await usdcContract.balanceOf(account1.address) >= 1_000_000_000_000 - usdcToUnits(amountToPay));
+        const amountAvailableToPay = 2; //up to 70
+        await usdcContract.approve(ledger.address, Number.MAX_SAFE_INTEGER - 1);
+        await ledger.payForNFT(tokenId1, usdcToUnits(amountAvailableToPay));
+        
+        console.log(await usdcContract.balanceOf(account1.address))
+        console.log(await usdcContract.balanceOf(ledger.address))
         assert(await nft.balanceOf(ledger.address) == 0);
         assert(await nft.balanceOf(account1.address) == 1);
-
-    });
-
-    xit("Should be able to allow 1 user to borrow USDC by sending an NFT as collateral ", async function () {
-
-        await nft['safeTransferFrom(address,address,uint256)'](account1.address, ledger.address, 1);
-        expect(await nft.balanceOf(ledger.address)).to.equal(1);
-        // await hre.network.provider.request({
-        //     method: "hardhat_impersonateAccount",
-        //     params: [ledger.address],
-        // });
-
-        // ledger_signer = await ethers.provider.getSigner(ledger.address);
-        
-        // nft = await nft.connect(ledger_signer);
-        // console.log(ledger.address)
-        await ledger.sendNFT(ledger.address, account1.address, 1);
-        expect(await nft.balanceOf(ledger.address)).to.equal(0);
-        
+        assert(await usdcContract.balanceOf(account1.address) < 1_000_000_000_000 );
+        assert(await usdcContract.balanceOf(account1.address) >= 1_000_000_000_000 - usdcToUnits(amountAvailableToPay));
 
     });
 

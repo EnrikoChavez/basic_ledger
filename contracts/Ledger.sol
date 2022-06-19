@@ -15,6 +15,7 @@ contract Ledger is Ownable, IERC721Receiver {
     uint256 nftPrice = usdcToUnits(100);
     mapping(uint256 => collatNFT) private tokenIdToNFT;
     address public usdcToken = 0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48;
+    uint256 public timeToRepayLoanInSeconds = 100;
 
     struct collatNFT {
         uint256 tokenId;
@@ -33,12 +34,13 @@ contract Ledger is Ownable, IERC721Receiver {
         require(IERC20(usdcToken).balanceOf(address(this)) >= amount, "ledger does not have enough usdc, we have lent too much already! Come back later");
         require(amount <= (nftPrice * 7 / 10), "amount to borrow cannot be more than 70% of nft price");
         require(nft.ownerOf(tokenId) == msg.sender, "token is not owned by function caller");
+        require(tokenIdToNFT[tokenId].tokenId == 0, "token is already owned my ledger"); //extra guard, should not get here
         require(amount > 0, "send a positive amount");
 
         //deposit NFT
         nft.safeTransferFrom(msg.sender, address(this), tokenId);
         tokenIdToNFT[tokenId] = collatNFT({
-            tokenId: uint128(tokenId),
+            tokenId: tokenId,
             timestamp: block.timestamp,
             owner: msg.sender,
             amountBorrowed: amount
@@ -51,8 +53,26 @@ contract Ledger is Ownable, IERC721Receiver {
     function payForNFT(uint256 tokenId, uint256 amount) external {
 
         require(amount > 0, "send a positive amount");
-        require(amount >= amountOwed(tokenId), string.concat("payment is not enough, amount required is", Strings.toHexString(amountOwed(tokenId))));
+        require(amount >= amountOwed(tokenId), string.concat("payment is not enough, amount in usdc required is ", Strings.toString(unitsToUsdc(amountOwed(tokenId))), ". Add a buffer amount to amount required, we will only accept the amount explicitly required"));
         require(nft.ownerOf(tokenId) == address(this), "token is not owned by contract");
+        require(tokenIdToNFT[tokenId].tokenId > 0, "token is not owned by ledger");  //extra guard, should not get here
+
+        if ((block.timestamp - tokenIdToNFT[tokenId].timestamp) < timeToRepayLoanInSeconds){
+            require(msg.sender == tokenIdToNFT[tokenId].owner, "only owner of nft can get nft back before grace period");
+
+            //pay USDC
+            // IERC20(usdcToken).approve(msg.sender, type(uint256).max);
+            IERC20(usdcToken).transferFrom(msg.sender, address(this), amount);
+
+            //give back NFT
+            nft.safeTransferFrom(address(this), msg.sender, tokenId);
+            tokenIdToNFT[tokenId] = collatNFT({
+                tokenId: 0,
+                timestamp: block.timestamp,
+                owner: msg.sender,
+                amountBorrowed: amount
+            });
+        }
 
     }
 
