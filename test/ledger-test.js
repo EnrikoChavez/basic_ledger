@@ -113,15 +113,19 @@ describe("Ledger", function () {
     it("The user can payback with USDC to retrieve NFT", async function () {
 
         const amountAvailableToPay = 2; //up to 70
+
+        const deltaAmountBeforePay = (await usdcContract.balanceOf(ledger.address)) - (await usdcContract.balanceOf(account1.address))
+        const account1BalanceBeforePay = await usdcContract.balanceOf(account1.address)
+
         await usdcContract.approve(ledger.address, Number.MAX_SAFE_INTEGER - 1);
         await ledger.payForNFT(tokenId1, usdcToUnits(amountAvailableToPay));
-        
-        console.log(await usdcContract.balanceOf(account1.address))
-        console.log(await usdcContract.balanceOf(ledger.address))
+
+        const deltaAmountAfterPay = (await usdcContract.balanceOf(ledger.address)) - (await usdcContract.balanceOf(account1.address))
+        const amountPaid = (deltaAmountAfterPay - deltaAmountBeforePay) / 2
+
         assert(await nft.balanceOf(ledger.address) == 0);
         assert(await nft.balanceOf(account1.address) == 1);
-        assert(await usdcContract.balanceOf(account1.address) < 1_000_000_000_000 );
-        assert(await usdcContract.balanceOf(account1.address) >= 1_000_000_000_000 - usdcToUnits(amountAvailableToPay));
+        assert(await usdcContract.balanceOf(account1.address) == account1BalanceBeforePay - amountPaid);
 
     });
 
