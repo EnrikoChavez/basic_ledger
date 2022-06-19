@@ -32,7 +32,7 @@ To test:
 
 Example test output:
 
-npx hardhat test
+- npx hardhat test
 
   Ledger
 
