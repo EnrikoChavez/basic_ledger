@@ -26,7 +26,7 @@ Requirements to test:
 - npm -v -> 8 (other versions may work, but not very certain)
 - npx -v -> 8 (other versions may work, but not very certain)
 
-- clone bundle
+- clone bundle and cd into project (git clone -b main (bundle) (dir)) (main branch is called "main")
 
 - hardhat (run "npm install --save-dev hardhat")
 - (if not installed) openzeppelin (npm install --save-dev @openzeppelin/contracts)
