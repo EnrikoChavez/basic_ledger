@@ -1,3 +1,5 @@
+Coded using Solidity and Javascript
+
 Ledger will be for 1 nft collection
 
 Features of this ledger are:
