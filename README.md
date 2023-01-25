@@ -1,6 +1,6 @@
-Ledger will be for 1 nft collection. Not for any NFT collection
+Coded using Solidity and Javascript
 
-Basic Ledger as described by assignment:
+Ledger will be for 1 nft collection
 
 Features of this ledger are:
 -   the period a user has to buy back an nft is 5 seconds (can be modified, but done for testing purposes)
