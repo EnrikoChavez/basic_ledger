@@ -16,7 +16,7 @@ function usdcToUnits(usdc){
 }
 
 function unitsToUsdc(usdc){
-    return Math.round(usdc / 1000000)
+    return Math.round(usdc / 1000000) //ideally not use division, but only multiplication when working with weis and money
 }
 
 let Ledger;
@@ -25,6 +25,8 @@ let NFT;
 let nft;
 let usdcContract;
 let account;
+let account0initialBalance;
+let ledgerInitialBalance;
 const tokenId = [];
 let currentTokenId = 1;
 
@@ -84,6 +86,9 @@ describe("Ledger", function () {
 
     it("Send usdc to addresses to pay back debt and send USDC to ledger so it can lend USDC", async function () {
 
+        account0initialBalance = await usdcContract.balanceOf(account[0].address)
+        ledgerInitialBalance = await usdcContract.balanceOf(ledger.address)
+
         let usdcInDollars = '1000000';
         //sending 1 million usdc to addresses 0 and 1
         
@@ -92,7 +97,8 @@ describe("Ledger", function () {
 
         //sending 1 million usdc to ledger
         await usdcContract.transfer(ledger.address, usdcInDollars + "000000");
-        assert(await usdcContract.balanceOf(ledger.address) >= 1_000_000_000_000);
+
+        expect(await usdcContract.balanceOf(ledger.address)).to.equal(ledgerInitialBalance.toNumber() + 1_000_000_000_000)
 
         //stop impersonating whale address and go back to default address 0 impersonation
         await hre.network.provider.request({
@@ -108,7 +114,7 @@ describe("Ledger", function () {
     it("account[0] borrows USDC by sending an NFT as collateral", async function () {
         
         //checking before balances
-        assert(await usdcContract.balanceOf(account[0].address) >= 1_000_000_000_000); //this is different, 
+        expect(await usdcContract.balanceOf(ledger.address)).to.equal(ledgerInitialBalance + 1_000_000_000_000) //this is different, 
         assert(await nft.balanceOf(ledger.address) == 0);
         assert(await nft.balanceOf(account[0].address) == 2);
 
@@ -116,7 +122,7 @@ describe("Ledger", function () {
         await ledger.borrowUSDC(tokenId[0], usdcToUnits(amountToBorrow));
 
         //checking after balances
-        assert(await usdcContract.balanceOf(account[0].address) >= (1_000_000_000_000 + usdcToUnits(amountToBorrow)));
+        expect(await usdcContract.balanceOf(account[0].address)).to.equal(account0initialBalance.toNumber() + 1_000_000_000_000 + usdcToUnits(amountToBorrow))
         assert(await nft.balanceOf(ledger.address) == 1);
         assert(await nft.balanceOf(account[0].address) == 1);
 

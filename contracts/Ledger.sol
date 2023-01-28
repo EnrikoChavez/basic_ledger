@@ -36,7 +36,7 @@ contract Ledger is Ownable, IERC721Receiver {
     function borrowUSDC(uint256 tokenId, uint256 amount) external {
 
         require(IERC20(usdcToken).balanceOf(address(this)) >= amount, "ledger does not have enough usdc, we have lent too much already! Come back later");
-        require(amount <= (nftPrice * 7 / 10), "amount to borrow cannot be more than 70% of nft price");
+        require(amount <= (nftPrice * 7 / 10), "amount to borrow cannot be more than 70% of nft price"); //avoid division when working with money
         require(nft.ownerOf(tokenId) == msg.sender, "token is not owned by function caller");
         require(tokenIdToNFT[tokenId].tokenId == 0, "token is already owned my ledger"); //extra guard, should not get here
         require(amount > 0, "send a positive amount");
