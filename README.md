@@ -16,7 +16,7 @@ Considerations:
 
 Testing:
 -   all the testing is done on ledger-test.js, where it mimicks interactions with the ledger contract on the of the hardhat local blockchain
--   Much of the testing is commented, but can go over it in person/zoom and talk about how to add more test cases
+-   Much of the testing is commented, but can go over it if reached out on it
 
 Requirements to test:
 
