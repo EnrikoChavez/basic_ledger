@@ -33,6 +33,7 @@ Requirements to test:
 
 
 To test:
+- provide a url for which hardhat can connect to an ethereum mainnet (example: https://eth-mainnet.alchemyapi.io/v2/{key})
 - run "npx hardhat test"
 
 
