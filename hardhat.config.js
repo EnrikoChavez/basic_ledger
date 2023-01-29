@@ -28,7 +28,6 @@ module.exports = {
       forking: {
         // eslint-disable-next-line
         enabled: true,
-        //exposing key since private repo for testing, this forks from mainnet eth
         url: secrets.url
       }
     }
