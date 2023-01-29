@@ -3,6 +3,8 @@ require("dotenv").config();
 require("@nomiclabs/hardhat-etherscan");
 require("@nomiclabs/hardhat-waffle");
 
+let secrets = require("./.secrets")
+
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
 task("accounts", "Prints the list of accounts", async (taskArgs, hre) => {
@@ -27,7 +29,7 @@ module.exports = {
         // eslint-disable-next-line
         enabled: true,
         //exposing key since private repo for testing, this forks from mainnet eth
-        url: `https://eth-mainnet.alchemyapi.io/v2/5yg43Bhpb4konxq7nKuOGmaEgz0z4gFx`
+        url: secrets.url
       }
     }
   }
