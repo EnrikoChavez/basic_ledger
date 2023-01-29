@@ -33,7 +33,7 @@ Requirements to test:
 
 
 To test:
-- provide a url for which hardhat can connect to an ethereum mainnet (example: https://eth-mainnet.alchemyapi.io/v2/{key})
+- provide a url for which hardhat can connect to an ethereum mainnet inside hardhat.config.js (example: url: https://eth-mainnet.alchemyapi.io/v2/{key}, replacing line 31 "url: secrets.url")
 - run "npx hardhat test"
 
 
